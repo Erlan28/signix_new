@@ -192,17 +192,26 @@ class OrmawaController extends Controller
 
         $ormawa = Auth::guard('ormawa')->user();
 
-        if ($ormawa->profile) {
-            Storage::disk('public')->delete($ormawa->profile);
+        if (!$ormawa) {
+            return back()->with('error', 'Failed to update profile photo. User not found.');
         }
 
-        $path = $request->file('profile_photo')->store('profile-photos', 'public');
+        // Hapus foto profil lama jika ada
+        if ($ormawa->profile && file_exists(public_path('profiles/' . $ormawa->profile))) {
+            unlink(public_path('profiles/' . $ormawa->profile));
+        }
 
+        // Simpan file baru ke folder public/profiles
+        $file = $request->file('profile_photo');
+        $filename = time() . '.' . $file->getClientOriginalExtension();
+        $file->move(public_path('profiles'), $filename);
+
+        // Update database
         $ormawa->update([
-            'profile' => $path
+            'profile' => $filename,
         ]);
 
-        return back()->with('success', 'Profile photo updated successfully');
+        return back()->with('success', 'Profile photo updated successfully.');
     }
 
     public function destroyPhoto()
